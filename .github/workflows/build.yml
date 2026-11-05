@@ -1,0 +1,42 @@
+name: tefsm_water_finder
+description: Flutter app for TEFSM Groundwater Detector - Download CSV via Bluetooth and generate Heatmap/Contour maps.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Bluetooth BLE
+  flutter_blue_plus: ^1.32.12
+
+  # File system & paths
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # CSV parsing
+  csv: ^6.0.0
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # UI helpers
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+
+  # Optional: better charts if needed later
+  # syncfusion_flutter_charts: ^26.2.14
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  # assets:
+  #   - assets/
