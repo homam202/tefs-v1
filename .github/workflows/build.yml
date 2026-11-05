@@ -1,42 +1,93 @@
-name: tefsm_water_finder
-description: Flutter app for TEFSM Groundwater Detector - Download CSV via Bluetooth and generate Heatmap/Contour maps.
-publish_to: 'none'
-version: 1.0.0+1
+name: Build APK
 
-environment:
-  sdk: '>=3.2.0 <4.0.0'
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
-dependencies:
-  flutter:
-    sdk: flutter
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-  # Bluetooth BLE
-  flutter_blue_plus: ^1.32.12
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
 
-  # File system & paths
-  path_provider: ^2.1.4
-  path: ^1.9.0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  # CSV parsing
-  csv: ^6.0.0
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-  # Permissions
-  permission_handler: ^11.3.1
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
 
-  # UI helpers
-  cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1
+      - name: Check Flutter
+        run: flutter --version
 
-  # Optional: better charts if needed later
-  # syncfusion_flutter_charts: ^26.2.14
+      - name: Ensure platform folders exist
+        run: |
+          if [ ! -d "android" ]; then
+            echo "android/ folder missing – generating platform files..."
+            flutter create . --project-name tefsm_water_finder --org com.tefsm.waterfinder
+          fi
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^4.0.0
+      - name: Get dependencies
+        run: flutter pub get
 
-flutter:
-  uses-material-design: true
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos || true
 
-  # assets:
-  #   - assets/
+      - name: Build APK (Release)
+        run: flutter build apk --release --split-per-abi
+
+      - name: List generated APKs
+        run: find build/app/outputs/flutter-apk -name "*.apk" -exec ls -lh {} \;
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tefsm-water-finder-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APKs from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: tefsm-water-finder-apks
+          path: apks/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apks/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
